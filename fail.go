@@ -2,22 +2,22 @@
 //
 // It is primarily intended for use in tests. Sample usage is below:
 //
-// func TestSomething(t *testing.T) {
-// 	// fail.Using recovers from panics and calls t.Fatal with a stack trace if any errors occur.
-// 	defer fail.Using(t.Fatal)
+// 	func TestSomething(t *testing.T) {
+// 		// fail.Using recovers from panics and calls t.Fatal with a stack trace if any errors occur.
+// 		defer fail.Using(t.Fatal)
 //
-// 	file, err := os.Open("myfile")
-// 	// Panic with a failure if err is non-nil. The panic is recovered by the call to fail.Using
-// 	// and t.Fatal is automatically called.
-// 	fail.IfErr(err)
+// 		file, err := os.Open("myfile")
+// 		// Panic with a failure if err is non-nil. The panic is recovered by the call to fail.Using
+// 		// and t.Fatal is automatically called.
+// 		fail.IfErr(err)
 //
-// 	defer fail.IfDeferred(file.Close, "failed to close myfile")
+// 		defer fail.IfDeferred(file.Close, "failed to close myfile")
 //
-//   	data, err := ioutil.ReadAll(file)
-// 	fail.IfErr(err, "failed to read contents of myfile")
-// 	expected := "expected data"
-// 	fail.If(string(data) != expected, string(data), " != ", expected)
-// }
+//   		data, err := ioutil.ReadAll(file)
+// 		fail.IfErr(err, "failed to read contents of myfile")
+// 		expected := "expected data"
+// 		fail.If(string(data) != expected, string(data), " != ", expected)
+// 	}
 package fail
 
 import (
@@ -102,13 +102,13 @@ func IfErr(err error, args ...interface{}) {
 // IfDeferred panics if the error returned by fn is non-nil, constructing a failure message with the error and args.
 // It must be used in conjunction with Using, to check for errors in deferred functions. Sample usage is below:
 //
-// func TestSomething(t *testing.T) {
-// 	defer fail.Using(t.Fatal)
-// 	file, err := os.Open("myfile")
-//  	fail.IfErr(err)
-// 	defer fail.IfDeferred(file.Close, "closing myfile failed")
-// 	...
-// }
+// 	func TestSomething(t *testing.T) {
+// 		defer fail.Using(t.Fatal)
+// 		file, err := os.Open("myfile")
+//  		fail.IfErr(err)
+// 		defer fail.IfDeferred(file.Close, "closing myfile failed")
+// 		...
+// 	}
 func IfDeferred(fn func() error, args ...interface{}) {
 	if err := fn(); err != nil {
 		panic(failure(append([]interface{}{err}, args...)))
