@@ -39,6 +39,27 @@ func clean(str string) string {
 	}
 }
 
+func squash(trace []string) ([]string, bool) {
+	squashed := []string{""}
+	found, include, strippedPath := false, false, false
+	for _, part := range trace {
+		if strings.Contains(part, pkgPath) {
+			found, strippedPath = true, true
+		} else if strings.HasPrefix(strings.TrimSpace(part), "testing.tRunner") {
+			include, found = false, false
+		} else if found {
+			include = true
+		}
+		if include {
+			squashed = append(squashed, clean(part))
+		}
+	}
+	if !strippedPath {
+		return trace, false
+	}
+	return squashed, true
+}
+
 // Using recovers from panics and calls failure with the result of the recovery. It must be used as part of a deferred
 // call.
 func Using(failer func(...interface{})) {
@@ -48,20 +69,10 @@ func Using(failer func(...interface{})) {
 	case nil:
 		return
 	case failure:
-		parts := strings.Split(string(debug.Stack()), "\n")
-		squashed := []string{""}
-		found, include := false, false
-		for _, part := range parts {
-			if strings.Contains(part, pkgPath) {
-				found = true
-			} else if strings.HasPrefix(strings.TrimSpace(part), "testing.tRunner") {
-				include, found = false, false
-			} else if found {
-				include = true
-			}
-			if include {
-				squashed = append(squashed, clean(part))
-			}
+		trace := strings.Split(string(debug.Stack()), "\n")
+		squashed, more := squash(trace)
+		for i := 0; i < 3 && more; i++ {
+			squashed, more = squash(squashed)
 		}
 		failer(append(f, strings.Join(squashed, "\n"))...)
 	default:
