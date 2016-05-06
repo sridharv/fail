@@ -21,6 +21,7 @@
 package fail
 
 import (
+	"fmt"
 	"reflect"
 	"runtime/debug"
 	"strings"
@@ -74,7 +75,10 @@ func Using(failer func(...interface{})) {
 		for i := 0; i < 3 && more; i++ {
 			squashed, more = squash(squashed)
 		}
-		failer(append(f, strings.Join(squashed, "\n"))...)
+		res := append(f, strings.Join(squashed, "\n"))
+		res = append(res, queue...)
+		failing, queue = false, []interface{}{}
+		failer(res...)
 	default:
 		panic(r)
 	}
@@ -106,7 +110,7 @@ func TimedOut(fn func(), timeout time.Duration) bool {
 // It must be used in conjunction with Using.
 func IfErr(err error, args ...interface{}) {
 	if err != nil {
-		panic(failure(append([]interface{}{err}, args...)))
+		Now(append([]interface{}{err}, args...)...)
 	}
 }
 
@@ -122,7 +126,7 @@ func IfErr(err error, args ...interface{}) {
 // 	}
 func IfDeferred(fn func() error, args ...interface{}) {
 	if err := fn(); err != nil {
-		panic(failure(append([]interface{}{err}, args...)))
+		Now(append([]interface{}{err}, args...)...)
 	}
 }
 
@@ -130,11 +134,34 @@ func IfDeferred(fn func() error, args ...interface{}) {
 // It must be used in conjuction with Using.
 func If(condition bool, args ...interface{}) {
 	if condition {
-		panic(failure(args))
+		Now(args...)
 	}
+}
+
+var failing = false
+var queue = []interface{}{}
+
+func enqueue(f interface{}) {
+	defer func() {
+		r := recover().(failure)
+		squashed := []string{"", "Failure on defer: " + fmt.Sprintln(r...)}
+		queue = append(queue, strings.Join(squashed, "\n"))
+	}()
+	panic(f)
 }
 
 // Message returns a failure message that can be recovered by a call to Using.
 func Message(args ...interface{}) interface{} {
+	failing = true
 	return failure(args)
+}
+
+// Now is equivalent to panic(Message(...)). However, if Now is being called
+// as part of a deferred statement and another failure as already occurred, the
+// failure will be added to the original failure.
+func Now(args ...interface{}) {
+	if !failing {
+		panic(Message(args...))
+	}
+	enqueue(Message(args...))
 }
